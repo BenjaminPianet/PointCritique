@@ -1,0 +1,105 @@
+---
+import Base from '../../layouts/Base.astro';
+import { getCollection } from 'astro:content';
+
+const videos = await getCollection('videos');
+
+// regroupement par thème, trié par ordreTheme puis date
+type Video = (typeof videos)[number];
+const parTheme = new Map<string, { ordre: number; items: Video[] }>();
+for (const v of videos) {
+  const cle = v.data.theme;
+  if (!parTheme.has(cle)) parTheme.set(cle, { ordre: v.data.ordreTheme, items: [] });
+  parTheme.get(cle)!.items.push(v);
+}
+const themes = [...parTheme.entries()]
+  .sort((a, b) => a[1].ordre - b[1].ordre)
+  .map(([nom, g]) => ({
+    nom,
+    items: g.items.sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf()),
+  }));
+---
+
+<Base titre="Vidéos" description="Vidéos par thème — Point Critique.">
+  <div class="pc-contenu pc-page">
+    <header class="pc-page-entete">
+      <h1>Vidéos</h1>
+      <p class="pc-page-sous">Regroupées par thème.</p>
+    </header>
+
+    {videos.length === 0 ? (
+      <p class="pc-vide">Aucune vidéo pour l'instant.</p>
+    ) : (
+      themes.map((theme) => (
+        <section class="pc-theme">
+          <h2 class="pc-theme-titre">{theme.nom}</h2>
+          <div class="pc-grille">
+            {theme.items.map((v) => (
+              <article class="pc-vignette">
+                <div class="pc-vignette-cadre">
+                  <iframe
+                    src={`https://www.youtube-nocookie.com/embed/${v.data.youtube}`}
+                    title={v.data.titre}
+                    loading="lazy"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowfullscreen
+                  ></iframe>
+                </div>
+                <h3 class="pc-vignette-titre">{v.data.titre}</h3>
+                {v.data.description && (
+                  <p class="pc-vignette-desc">{v.data.description}</p>
+                )}
+              </article>
+            ))}
+          </div>
+        </section>
+      ))
+    )}
+  </div>
+</Base>
+
+<style>
+  .pc-page { padding-top: 3rem; }
+  .pc-page-entete { margin-bottom: 2.5rem; }
+  .pc-page-entete h1 { margin-bottom: 0.3rem; }
+  .pc-page-sous { color: var(--pc-encre-douce); font-style: italic; margin: 0; }
+
+  .pc-theme { margin-bottom: 3rem; }
+  .pc-theme-titre {
+    font-size: 1.3rem;
+    border-bottom: 1px solid var(--pc-trait);
+    padding-bottom: 0.6rem;
+    margin: 0 0 1.5rem;
+  }
+  .pc-grille {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 2rem;
+  }
+  .pc-vignette { }
+  .pc-vignette-cadre {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    background: var(--pc-fond-doux);
+    border: 1px solid var(--pc-trait);
+    border-radius: 6px;
+    overflow: hidden;
+    margin-bottom: 0.8rem;
+  }
+  .pc-vignette-cadre iframe {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%; border: 0;
+  }
+  .pc-vignette-titre {
+    font-size: 1.15rem;
+    margin: 0 0 0.3rem;
+  }
+  .pc-vignette-desc {
+    margin: 0;
+    color: var(--pc-encre-douce);
+    font-size: 0.98rem;
+    line-height: 1.55;
+  }
+  .pc-vide { color: var(--pc-gris); font-style: italic; }
+</style>

@@ -1,0 +1,59 @@
+---
+// Video.astro — intègre une vidéo YouTube ou Vimeo de façon responsive.
+// Usage dans un article Markdown (voir l'exemple) :
+//   <Video id="dQw4w9WgXcQ" />                      (YouTube par défaut)
+//   <Video plateforme="vimeo" id="76979871" />
+//   <Video id="dQw4w9WgXcQ" titre="Légende sous la vidéo" />
+
+interface Props {
+  id: string;
+  plateforme?: 'youtube' | 'vimeo';
+  titre?: string;
+}
+
+const { id, plateforme = 'youtube', titre } = Astro.props;
+
+const src =
+  plateforme === 'vimeo'
+    ? `https://player.vimeo.com/video/${id}`
+    : `https://www.youtube-nocookie.com/embed/${id}`;
+---
+
+<figure class="pc-video">
+  <div class="pc-video-cadre">
+    <iframe
+      src={src}
+      title={titre ?? 'Vidéo intégrée'}
+      loading="lazy"
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+      allowfullscreen
+    ></iframe>
+  </div>
+  {titre && <figcaption class="pc-meta pc-video-legende">{titre}</figcaption>}
+</figure>
+
+<style>
+  .pc-video { margin: 2.5rem 0; }
+  .pc-video-cadre {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    background: var(--pc-fond-doux);
+    border: 1px solid var(--pc-trait);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .pc-video-cadre iframe {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+  }
+  .pc-video-legende {
+    margin-top: 0.7rem;
+    text-align: center;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+</style>

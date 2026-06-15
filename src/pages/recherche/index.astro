@@ -1,0 +1,91 @@
+---
+import Base from '../../layouts/Base.astro';
+import { getCollection } from 'astro:content';
+
+const travaux = (await getCollection('recherche'))
+  .sort((a, b) => b.data.annee - a.data.annee);
+
+// regroupement par année
+const parAnnee = new Map<number, typeof travaux>();
+for (const t of travaux) {
+  if (!parAnnee.has(t.data.annee)) parAnnee.set(t.data.annee, []);
+  parAnnee.get(t.data.annee)!.push(t);
+}
+const annees = [...parAnnee.keys()].sort((a, b) => b - a);
+---
+
+<Base titre="Recherche" description="Travaux et publications — Point Critique.">
+  <div class="pc-lecture pc-page">
+    <header class="pc-page-entete">
+      <h1>Recherche</h1>
+      <p class="pc-page-sous">Travaux, articles et communications.</p>
+    </header>
+
+    {travaux.length === 0 ? (
+      <p class="pc-vide">Aucune publication répertoriée pour l'instant.</p>
+    ) : (
+      annees.map((an) => (
+        <section class="pc-an">
+          <h2 class="pc-an-titre">{an}</h2>
+          <ul class="pc-travaux">
+            {parAnnee.get(an)!.map((t) => (
+              <li class="pc-travail">
+                <div class="pc-travail-tete">
+                  {t.data.type && <span class="pc-meta pc-travail-type">{t.data.type}</span>}
+                  <h3 class="pc-travail-titre">
+                    {t.data.lien ? (
+                      <a href={t.data.lien} target="_blank" rel="noopener">{t.data.titre}</a>
+                    ) : (
+                      t.data.titre
+                    )}
+                  </h3>
+                </div>
+                <p class="pc-travail-ref">
+                  {t.data.auteurs && t.data.auteurs !== '—' && (
+                    <span class="pc-travail-auteurs">{t.data.auteurs}. </span>
+                  )}
+                  {t.data.publication && <em>{t.data.publication}</em>}
+                  {t.data.publication && ', '}{t.data.annee}.
+                </p>
+                {t.data.resume && <p class="pc-travail-resume">{t.data.resume}</p>}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))
+    )}
+  </div>
+</Base>
+
+<style>
+  .pc-page { padding-top: 3rem; }
+  .pc-page-entete { margin-bottom: 2.5rem; }
+  .pc-page-entete h1 { margin-bottom: 0.3rem; }
+  .pc-page-sous { color: var(--pc-encre-douce); font-style: italic; margin: 0; }
+
+  .pc-an { margin-bottom: 2.5rem; }
+  .pc-an-titre {
+    font-size: 1rem; color: var(--pc-gris); font-weight: 500;
+    border-bottom: 1px solid var(--pc-trait);
+    padding-bottom: 0.5rem; margin: 0 0 1.2rem;
+  }
+  .pc-travaux { list-style: none; margin: 0; padding: 0; }
+  .pc-travail { margin-bottom: 1.8rem; }
+  .pc-travail-tete { margin-bottom: 0.3rem; }
+  .pc-travail-type {
+    display: block; margin-bottom: 0.3rem;
+  }
+  .pc-travail-titre {
+    font-size: 1.2rem; margin: 0; line-height: 1.4;
+  }
+  .pc-travail-titre a { border-bottom-color: var(--pc-trait); }
+  .pc-travail-ref {
+    margin: 0.2rem 0 0; color: var(--pc-encre-douce);
+    font-size: 1rem; line-height: 1.5;
+  }
+  .pc-travail-resume {
+    margin: 0.5rem 0 0; color: var(--pc-encre-douce);
+    font-size: 1rem; line-height: 1.6;
+  }
+  .pc-vide { color: var(--pc-gris); font-style: italic; }
+</style>

@@ -1,0 +1,170 @@
+---
+import '../styles/global.css';
+
+interface Props {
+  titre?: string;
+  description?: string;
+}
+
+const {
+  titre = 'Point Critique',
+  description = 'Cheminons aux côtés des processus. Essais sur la philosophie et la science.',
+} = Astro.props;
+
+const titreComplet = titre === 'Point Critique' ? titre : `${titre} — Point Critique`;
+const chemin = Astro.url.pathname;
+const estActif = (lien: string) =>
+  lien === '/' ? chemin === '/' : chemin.startsWith(lien);
+---
+
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description} />
+    <title>{titreComplet}</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+    <!-- Polices : Space Grotesk (titres) + Newsreader (lecture) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <meta property="og:title" content={titreComplet} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+  </head>
+  <body>
+    <header class="pc-entete">
+      <div class="pc-contenu pc-entete-grille">
+        <a href="/" class="pc-marque" aria-label="Point Critique, accueil">
+          <span class="pc-point" aria-hidden="true"></span>
+          <span class="pc-marque-texte">Point Critique</span>
+        </a>
+        <nav class="pc-nav" aria-label="Navigation principale">
+          <a href="/" class:list={[{ actif: estActif('/') }]}>Accueil</a>
+          <a href="/essais" class:list={[{ actif: estActif('/essais') }]}>Essais</a>
+          <a href="/poesie" class:list={[{ actif: estActif('/poesie') }]}>Poésie</a>
+          <a href="/recherche" class:list={[{ actif: estActif('/recherche') }]}>Recherche</a>
+          <a href="/videos" class:list={[{ actif: estActif('/videos') }]}>Vidéos</a>
+          <a href="/a-propos" class:list={[{ actif: estActif('/a-propos') }]}>À propos</a>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <slot />
+    </main>
+
+    <footer class="pc-pied">
+      <div class="pc-contenu pc-pied-grille">
+        <span class="pc-meta">Point Critique</span>
+        <span class="pc-meta pc-pied-note">Cheminons aux côtés des processus</span>
+      </div>
+    </footer>
+
+    <style>
+      .pc-entete {
+        border-bottom: 1px solid var(--pc-trait);
+        background: color-mix(in srgb, var(--pc-fond) 85%, transparent);
+        backdrop-filter: blur(8px);
+        position: sticky;
+        top: 0;
+        z-index: 10;
+      }
+      .pc-entete-grille {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem 1.5rem;
+        padding-top: 1.1rem;
+        padding-bottom: 1.1rem;
+        flex-wrap: wrap;
+      }
+      .pc-marque {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.6rem;
+        border: none;
+        font-family: var(--pc-titre);
+        font-weight: 600;
+        font-size: 1.05rem;
+        letter-spacing: -0.01em;
+        color: var(--pc-encre);
+      }
+      .pc-marque:hover { color: var(--pc-accent); }
+      /* le petit point : pulse lent, retenu */
+      .pc-point {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background: var(--pc-accent);
+        flex: none;
+        animation: pulse 3.4s ease-in-out infinite;
+      }
+      @keyframes pulse {
+        0%, 100% { transform: scale(1); opacity: 1; }
+        50% { transform: scale(0.7); opacity: 0.6; }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .pc-point { animation: none; }
+      }
+
+      .pc-nav {
+        display: flex;
+        gap: 1.6rem;
+        font-family: var(--pc-util);
+        font-size: 0.95rem;
+        font-weight: 500;
+        flex-wrap: wrap;
+      }
+      .pc-nav a {
+        border: none;
+        color: var(--pc-encre-douce);
+        padding-bottom: 2px;
+        position: relative;
+      }
+      .pc-nav a:hover { color: var(--pc-accent); }
+      .pc-nav a.actif { color: var(--pc-encre); }
+      .pc-nav a.actif::after {
+        content: '';
+        position: absolute;
+        left: 0; right: 0; bottom: -2px;
+        height: 1.5px;
+        background: var(--pc-accent);
+      }
+
+      .pc-pied {
+        margin-top: 6rem;
+        border-top: 1px solid var(--pc-trait);
+        padding: 2.5rem 0;
+      }
+      .pc-pied-grille {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+      }
+      .pc-pied-note { text-transform: none; letter-spacing: 0; font-style: normal; }
+
+      @media (max-width: 720px) {
+        .pc-entete-grille { justify-content: center; }
+        .pc-nav {
+          width: 100%;
+          justify-content: center;
+          gap: 1.1rem 1.3rem;
+          flex-wrap: wrap;
+        }
+      }
+      @media (max-width: 560px) {
+        .pc-marque-texte { font-size: 1rem; }
+        .pc-nav { gap: 0.8rem 1rem; font-size: 0.85rem; }
+      }
+    </style>
+  </body>
+</html>

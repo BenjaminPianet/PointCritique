@@ -1,0 +1,56 @@
+---
+import Base from '../layouts/Base.astro';
+---
+
+<Base titre="À propos" description="Ce qu'est Point Critique et la démarche qui l'anime.">
+  <div class="pc-lecture pc-page">
+    <h1>À propos</h1>
+
+    <p class="pc-chapeau">
+      Point Critique est un carnet d'essais sur la philosophie et la science —
+      écrit à voix mesurée, pour qui aime prendre le temps de penser.
+    </p>
+
+    <p>
+      Le nom dit la chose. En mathématiques, un point critique est l'endroit où
+      une fonction hésite — où sa pente s'annule avant de repartir. En
+      thermodynamique, c'est le seuil où le liquide et le gaz cessent de se
+      distinguer. Partout, c'est le moment de bascule : l'instant fragile où un
+      système change d'état.
+    </p>
+
+    <p>
+      C'est là que ce carnet veut se tenir. Non pas dans les certitudes
+      installées, mais dans les zones de transition, où les idées se tendent les
+      unes vers les autres sans encore se figer. <em>Cheminons aux côtés des
+      processus</em> : suivre une pensée pendant qu'elle se forme, plutôt que la
+      contempler une fois refroidie.
+    </p>
+
+    <h2>La forme</h2>
+    <p>
+      Des textes, parfois accompagnés de vidéos quand l'image éclaire mieux que
+      les mots. Pas de calendrier, pas de promesse de régularité — seulement des
+      écrits publiés quand ils sont prêts.
+    </p>
+
+    <p class="pc-signature">— Point Critique</p>
+  </div>
+</Base>
+
+<style>
+  .pc-page { padding-top: 3rem; }
+  .pc-chapeau {
+    font-size: 1.3rem;
+    line-height: 1.6;
+    color: var(--pc-encre);
+    font-style: italic;
+    margin-bottom: 2rem;
+  }
+  .pc-signature {
+    margin-top: 3rem;
+    font-family: var(--pc-util);
+    color: var(--pc-gris);
+    font-size: 0.95rem;
+  }
+</style>

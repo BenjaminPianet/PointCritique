@@ -1,0 +1,229 @@
+---
+// PointCritique.astro — le geste signature, version morphing.
+// Un réseau de nœuds reliés par des fils. Le système se cristallise tour à
+// tour en fleur, abeille et cerf, s'effondre dans le chaos entre chaque forme,
+// puis recommence. Toujours agité par une force intérieure, retenu par une
+// gravité commune.
+// Rendu Canvas. Ralentit au scroll. Respecte prefers-reduced-motion.
+---
+
+<div class="pc-systeme" aria-hidden="true">
+  <canvas class="pc-canvas"></canvas>
+</div>
+
+<style>
+  .pc-systeme {
+    width: 100%;
+    height: 340px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+  .pc-canvas { width: 100%; height: 100%; display: block; }
+  @media (max-width: 640px) {
+    .pc-systeme { height: 280px; }
+  }
+</style>
+
+<script>
+  type Noeud = {
+    x: number; y: number;
+    vx: number; vy: number;
+    tx: number; ty: number;     // cible courante (vers la forme)
+    phase: number; freq: number;
+  };
+
+  // Contours des trois formes (coordonnées normalisées -0.5..0.5).
+  const FORMES: Record<string, [number, number][]> = {
+    fleur: [[-0.046,-0],[0.482,-0],[0.429,0.081],[0.283,0.116],[0.089,0.075],[0.006,0.042],[0.137,0.208],[0.183,0.373],[0.148,0.483],[0.062,0.5],[-0.029,0.411],[-0.076,0.236],[-0.053,0.021],[-0.135,0.176],[-0.273,0.307],[-0.406,0.345],[-0.482,0.295],[-0.467,0.19],[-0.35,0.079],[-0.157,0.009],[-0.157,-0.009],[-0.35,-0.079],[-0.467,-0.19],[-0.482,-0.295],[-0.406,-0.345],[-0.273,-0.307],[-0.135,-0.176],[-0.053,-0.021],[-0.076,-0.236],[-0.029,-0.411],[0.062,-0.5],[0.148,-0.483],[0.183,-0.373],[0.137,-0.208],[0.006,-0.042],[0.089,-0.075],[0.283,-0.116],[0.429,-0.081]],
+    abeille: [[0.255,0.249],[0.232,0.336],[0.167,0.413],[0.067,0.47],[-0.055,0.5],[-0.185,0.5],[-0.307,0.47],[-0.407,0.413],[-0.472,0.336],[-0.494,0.249],[-0.472,0.162],[-0.407,0.085],[-0.307,0.029],[-0.185,-0.002],[-0.055,-0.002],[0.067,0.029],[0.167,0.085],[0.232,0.162],[0.067,0.249],[-0.026,0.359],[-0.214,0.359],[-0.307,0.249],[-0.214,0.139],[-0.026,0.139],[0.345,0.249],[0.405,0.309],[0.405,0.189],[0.494,0.399],[0.494,0.099],[-0.157,-0.275],[-0.082,-0.388],[-0.007,-0.5],[-0.157,-0.275],[-0.082,-0.388],[-0.007,-0.5],[-0.12,0.249],[-0.12,0.249],[-0.12,0.249]],
+    cerf: [[0,0.345],[-0.068,0.311],[0.068,0.311],[-0.054,0.432],[0.054,0.432],[0,0.5],[-0.034,0.243],[0.034,0.243],[0,0.176],[-0.135,0.257],[0.135,0.257],[-0.068,0.142],[-0.122,0.007],[-0.176,-0.149],[-0.23,-0.311],[-0.27,-0.446],[-0.23,-0.162],[-0.338,-0.243],[-0.297,-0.331],[-0.405,-0.365],[-0.081,-0.061],[-0,-0.162],[0.068,0.142],[0.122,0.007],[0.176,-0.149],[0.23,-0.311],[0.27,-0.446],[0.23,-0.162],[0.338,-0.243],[0.297,-0.331],[0.405,-0.365],[0.081,-0.061],[0,-0.162],[0,-0.5],[0,-0.5],[0,-0.5],[0,-0.5],[0,-0.5]],
+  };
+  const ORDRE = ['fleur', 'abeille', 'cerf'];
+  const N = FORMES.fleur.length;
+
+  function init() {
+    const wrap = document.querySelector<HTMLElement>('.pc-systeme');
+    const canvas = document.querySelector<HTMLCanvasElement>('.pc-canvas');
+    if (!wrap || !canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const reduit = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const styles = getComputedStyle(document.documentElement);
+    const cAccent = styles.getPropertyValue('--pc-accent').trim() || '#2E4756';
+
+    let largeur = 0, hauteur = 0, cx = 0, cy = 0, echelle = 1;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const noeuds: Noeud[] = [];
+    let liens: [number, number][] = [];
+
+    function dimensionner() {
+      largeur = wrap.clientWidth;
+      hauteur = wrap.clientHeight;
+      canvas.width = largeur * dpr;
+      canvas.height = hauteur * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      cx = largeur / 2;
+      cy = hauteur / 2;
+      echelle = Math.min(largeur, hauteur) * 0.72;
+    }
+
+    function creerNoeuds() {
+      noeuds.length = 0;
+      for (let i = 0; i < N; i++) {
+        noeuds.push({
+          x: cx + (Math.random() - 0.5) * largeur * 0.5,
+          y: cy + (Math.random() - 0.5) * hauteur * 0.5,
+          vx: 0, vy: 0, tx: cx, ty: cy,
+          phase: Math.random() * Math.PI * 2,
+          freq: 0.4 + Math.random() * 0.6,
+        });
+      }
+    }
+
+    // calcule les liens : chaque nœud relié à ses 2 plus proches voisins
+    function calculerLiens() {
+      liens = [];
+      for (let i = 0; i < N; i++) {
+        const d = noeuds
+          .map((n, j) => ({ j, d: Math.hypot(n.tx - noeuds[i].tx, n.ty - noeuds[i].ty) }))
+          .filter((o) => o.j !== i)
+          .sort((a, b) => a.d - b.d);
+        for (let k = 0; k < 2; k++) {
+          const j = d[k].j;
+          if (!liens.some(([a, b]) => (a === i && b === j) || (a === j && b === i))) {
+            liens.push([i, j]);
+          }
+        }
+      }
+    }
+
+    // applique une forme : fixe les cibles des nœuds + recalcule les liens
+    function appliquerForme(nom: string) {
+      const f = FORMES[nom];
+      for (let i = 0; i < N; i++) {
+        n_tx(i, cx + f[i][0] * echelle, cy + f[i][1] * echelle);
+      }
+      calculerLiens();
+    }
+    function n_tx(i: number, x: number, y: number) { noeuds[i].tx = x; noeuds[i].ty = y; }
+
+    // état des cibles vers le chaos (effondrement)
+    function disperser() {
+      for (const n of noeuds) {
+        n.tx = cx + (Math.random() - 0.5) * largeur * 0.7;
+        n.ty = cy + (Math.random() - 0.5) * hauteur * 0.7;
+      }
+      liens = []; // pas de fils pendant l'effondrement (sauf voisins proches dynamiques)
+    }
+
+    // machine à états : assemble -> tient -> disperse -> forme suivante
+    type Phase = 'forme' | 'chaos';
+    let phase: Phase = 'forme';
+    let idxForme = 0;
+    let minuteur = 0;
+    const DUREE_FORME = 4.2;   // secondes où la forme est tenue
+    const DUREE_CHAOS = 1.6;   // secondes d'effondrement
+
+    let t = 0, visible = 1, raf = 0;
+
+    function pas() {
+      t += 0.016;
+      minuteur += 0.016;
+
+      // transitions
+      if (phase === 'forme' && minuteur > DUREE_FORME) {
+        phase = 'chaos'; minuteur = 0; disperser();
+      } else if (phase === 'chaos' && minuteur > DUREE_CHAOS) {
+        phase = 'forme'; minuteur = 0;
+        idxForme = (idxForme + 1) % ORDRE.length;
+        appliquerForme(ORDRE[idxForme]);
+      }
+
+      const vit = reduit ? 0 : visible;
+      ctx.clearRect(0, 0, largeur, hauteur);
+
+      for (const n of noeuds) {
+        if (vit > 0) {
+          // agitation propre (force intérieure)
+          const ax = Math.cos(t * n.freq + n.phase) * 0.06 * vit;
+          const ay = Math.sin(t * n.freq * 1.3 + n.phase) * 0.06 * vit;
+          // attraction vers la cible (assemblage de la forme)
+          const k = phase === 'forme' ? 0.045 : 0.02;
+          const rx = (n.tx - n.x) * k;
+          const ry = (n.ty - n.y) * k;
+          n.vx += ax + rx;
+          n.vy += ay + ry;
+          n.vx *= 0.9; n.vy *= 0.9;
+          n.x += n.vx * vit;
+          n.y += n.vy * vit;
+        }
+      }
+
+      // fils
+      if (phase === 'forme') {
+        for (const [i, j] of liens) {
+          const a = noeuds[i], b = noeuds[j];
+          const d = Math.hypot(a.x - b.x, a.y - b.y);
+          // proximité à la cible : les fils apparaissent quand la forme se forme
+          const da = Math.hypot(a.x - a.tx, a.y - a.ty);
+          const db = Math.hypot(b.x - b.tx, b.y - b.ty);
+          const nettete = Math.max(0, 1 - (da + db) / 120);
+          if (nettete <= 0.02) continue;
+          const tension = Math.min(d / 160, 1);
+          ctx.beginPath();
+          ctx.moveTo(a.x, a.y);
+          ctx.lineTo(b.x, b.y);
+          ctx.strokeStyle = cAccent;
+          ctx.globalAlpha = (0.1 + (1 - tension) * 0.3) * nettete;
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        }
+      }
+      ctx.globalAlpha = 1;
+
+      // nœuds
+      for (const n of noeuds) {
+        ctx.beginPath();
+        ctx.arc(n.x, n.y, 2.1, 0, Math.PI * 2);
+        ctx.fillStyle = cAccent;
+        ctx.globalAlpha = phase === 'forme' ? 0.85 : 0.5;
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+
+      raf = requestAnimationFrame(pas);
+    }
+
+    function surScroll() {
+      const haut = wrap.getBoundingClientRect().top;
+      const h = window.innerHeight;
+      const ratio = Math.max(0, Math.min(1, (haut + 200) / (h * 0.6)));
+      visible = 0.15 + ratio * 0.85;
+    }
+
+    dimensionner();
+    creerNoeuds();
+    appliquerForme(ORDRE[0]);
+    surScroll();
+    pas();
+
+    let redim: number;
+    window.addEventListener('resize', () => {
+      clearTimeout(redim);
+      redim = window.setTimeout(() => {
+        dimensionner();
+        if (phase === 'forme') appliquerForme(ORDRE[idxForme]);
+      }, 200);
+    });
+    window.addEventListener('scroll', surScroll, { passive: true });
+    document.addEventListener('visibilitychange', () => {
+      cancelAnimationFrame(raf);
+      if (!document.hidden) pas();
+    });
+  }
+
+  init();
+</script>

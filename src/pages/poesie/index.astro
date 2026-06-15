@@ -1,0 +1,172 @@
+---
+import Base from '../../layouts/Base.astro';
+import { getCollection } from 'astro:content';
+import { formaterDate } from '../../utils/lecture';
+
+const poemes = (await getCollection('poesie', ({ data }) => !data.brouillon))
+  .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+
+// On préserve les vers : le corps brut est découpé en lignes.
+// Une ligne vide = séparation de strophe.
+function enStrophes(corps: string): string[][] {
+  const lignes = corps.replace(/\r\n/g, '\n').split('\n');
+  const strophes: string[][] = [];
+  let courante: string[] = [];
+  for (const l of lignes) {
+    if (l.trim() === '') {
+      if (courante.length) { strophes.push(courante); courante = []; }
+    } else {
+      courante.push(l);
+    }
+  }
+  if (courante.length) strophes.push(courante);
+  return strophes;
+}
+
+const data = poemes.map((p) => ({
+  titre: p.data.titre,
+  date: p.data.date,
+  exergue: p.data.exergue,
+  strophes: enStrophes(p.body ?? ''),
+}));
+---
+
+<Base titre="Poésie" description="Poèmes — Point Critique.">
+  <div class="pc-lecture pc-page">
+    <header class="pc-page-entete">
+      <h1>Poésie</h1>
+      <p class="pc-page-sous">Passez sur un titre — ou touchez-le — pour le déplier.</p>
+    </header>
+
+    {data.length === 0 ? (
+      <p class="pc-vide">Aucun poème pour l'instant.</p>
+    ) : (
+      <ul class="pc-poemes">
+        {data.map((p) => (
+          <li class="pc-poeme">
+            <details class="pc-poeme-bloc">
+              <summary class="pc-poeme-tete">
+                <span class="pc-poeme-titre">{p.titre}</span>
+                {p.exergue && <span class="pc-poeme-exergue">{p.exergue}</span>}
+                <span class="pc-poeme-chevron" aria-hidden="true"></span>
+              </summary>
+              <div class="pc-poeme-corps">
+                {p.strophes.map((strophe) => (
+                  <p class="pc-strophe">
+                    {strophe.map((vers, i) => (
+                      <>
+                        {vers}
+                        {i < strophe.length - 1 && <br />}
+                      </>
+                    ))}
+                  </p>
+                ))}
+                <time class="pc-meta pc-poeme-date" datetime={p.date.toISOString()}>
+                  {formaterDate(p.date)}
+                </time>
+              </div>
+            </details>
+          </li>
+        ))}
+      </ul>
+    )}
+  </div>
+</Base>
+
+<style>
+  .pc-page { padding-top: 3rem; }
+  .pc-page-entete { margin-bottom: 2.5rem; }
+  .pc-page-entete h1 { margin-bottom: 0.3rem; }
+  .pc-page-sous { color: var(--pc-encre-douce); font-style: italic; margin: 0; }
+
+  .pc-poemes { list-style: none; margin: 0; padding: 0; }
+  .pc-poeme { border-bottom: 1px solid var(--pc-trait); }
+
+  .pc-poeme-bloc { }
+  /* en-tête cliquable */
+  .pc-poeme-tete {
+    display: flex;
+    align-items: baseline;
+    gap: 0.9rem;
+    padding: 1.5rem 0;
+    cursor: pointer;
+    list-style: none;
+    transition: color 0.2s ease;
+  }
+  .pc-poeme-tete::-webkit-details-marker { display: none; }
+  .pc-poeme-titre {
+    font-family: var(--pc-titre);
+    font-size: 1.4rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--pc-encre);
+    transition: color 0.2s ease;
+  }
+  .pc-poeme-exergue {
+    color: var(--pc-gris);
+    font-style: italic;
+    font-size: 1rem;
+    flex: 1;
+  }
+  .pc-poeme-chevron {
+    width: 7px; height: 7px;
+    border-right: 1.5px solid var(--pc-gris);
+    border-bottom: 1.5px solid var(--pc-gris);
+    transform: rotate(45deg);
+    transition: transform 0.25s ease, border-color 0.2s ease;
+    flex: none;
+    align-self: center;
+  }
+  details[open] .pc-poeme-chevron { transform: rotate(225deg); }
+
+  .pc-poeme-tete:hover .pc-poeme-titre,
+  details[open] .pc-poeme-titre { color: var(--pc-accent); }
+  .pc-poeme-tete:hover .pc-poeme-chevron { border-color: var(--pc-accent); }
+
+  /* corps du poème */
+  .pc-poeme-corps {
+    padding: 0 0 2rem;
+    animation: deploie 0.4s ease;
+  }
+  @keyframes deploie {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .pc-strophe {
+    margin: 0 0 1.4em;
+    line-height: 1.9;
+    font-size: 1.15rem;
+    color: var(--pc-encre);
+  }
+  .pc-poeme-date { display: block; margin-top: 1.5rem; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .pc-poeme-corps { animation: none; }
+    .pc-poeme-chevron { transition: none; }
+  }
+</style>
+
+<script>
+  // Amélioration : sur les appareils avec survol (souris), le poème se déplie
+  // au survol et se replie quand on s'éloigne. Sur tactile/clavier, le clic
+  // natif de <details> suffit (accessible partout).
+  const peutSurvoler = window.matchMedia('(hover: hover) and (pointer: fine)');
+
+  function activerSurvol() {
+    document.querySelectorAll<HTMLDetailsElement>('.pc-poeme-bloc').forEach((bloc) => {
+      const li = bloc.closest('.pc-poeme');
+      if (!li) return;
+      let timer: number;
+      li.addEventListener('mouseenter', () => {
+        clearTimeout(timer);
+        bloc.open = true;
+      });
+      li.addEventListener('mouseleave', () => {
+        // petit délai : évite les fermetures involontaires
+        timer = window.setTimeout(() => { bloc.open = false; }, 120);
+      });
+    });
+  }
+
+  if (peutSurvoler.matches) activerSurvol();
+</script>

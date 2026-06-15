@@ -1,0 +1,91 @@
+---
+import Base from '../../layouts/Base.astro';
+import Video from '../../components/Video.astro';
+import { getCollection, render } from 'astro:content';
+import { formaterDate, tempsLecture } from '../../utils/lecture';
+
+export async function getStaticPaths() {
+  const articles = await getCollection('essais', ({ data }) => !data.brouillon);
+  return articles.map((article) => ({
+    params: { id: article.id },
+    props: { article },
+  }));
+}
+
+const { article } = Astro.props;
+const { Content } = await render(article);
+const lecture = tempsLecture(article.body ?? '');
+---
+
+<Base titre={article.data.titre} description={article.data.description}>
+  <article class="pc-article">
+    <header class="pc-lecture pc-article-entete">
+      <a href="/essais" class="pc-retour">← Essais</a>
+      <h1>{article.data.titre}</h1>
+      <div class="pc-article-meta">
+        <time class="pc-meta" datetime={article.data.date.toISOString()}>
+          {formaterDate(article.data.date)}
+        </time>
+        <span class="pc-sep" aria-hidden="true"></span>
+        <span class="pc-meta">{lecture}</span>
+      </div>
+    </header>
+
+    <div class="pc-lecture pc-prose">
+      <Content components={{ Video }} />
+    </div>
+
+    <footer class="pc-lecture pc-article-pied">
+      <span class="pc-point-fin" aria-hidden="true"></span>
+      <a href="/essais" class="pc-retour">← Tous les essais</a>
+    </footer>
+  </article>
+</Base>
+
+<style>
+  .pc-article { padding-top: 2.5rem; }
+  .pc-retour {
+    border: none;
+    font-family: var(--pc-util);
+    font-size: 0.88rem;
+    font-weight: 500;
+    color: var(--pc-gris);
+  }
+  .pc-retour:hover { color: var(--pc-accent); }
+
+  .pc-article-entete {
+    margin-bottom: 2.5rem;
+  }
+  .pc-article-entete h1 {
+    margin-top: 1.2rem;
+    margin-bottom: 0.9rem;
+  }
+  .pc-article-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+  }
+  .pc-sep {
+    width: 4px; height: 4px; border-radius: 50%;
+    background: var(--pc-gris); display: inline-block;
+  }
+
+  /* Le corps de l'article hérite des styles globaux ; on règle juste l'espacement */
+  .pc-prose :global(h2) { margin-top: 2.4em; }
+  .pc-prose :global(h3) { margin-top: 1.8em; }
+  .pc-prose :global(figure) { margin-left: 0; margin-right: 0; }
+
+  .pc-article-pied {
+    margin-top: 4rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--pc-trait);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+  }
+  .pc-point-fin {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--pc-accent);
+  }
+</style>

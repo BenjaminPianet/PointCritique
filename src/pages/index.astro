@@ -1,0 +1,91 @@
+---
+import Base from '../layouts/Base.astro';
+import PointCritique from '../components/PointCritique.astro';
+import { getCollection } from 'astro:content';
+import { formaterDate } from '../utils/lecture';
+
+const articles = (await getCollection('essais', ({ data }) => !data.brouillon))
+  .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+
+const recents = articles.slice(0, 4);
+---
+
+<Base>
+  <section class="pc-hero">
+    <PointCritique />
+    <div class="pc-lecture pc-hero-texte">
+      <h1>Point Critique</h1>
+      <p class="pc-accroche">Cheminons aux côtés des processus.</p>
+    </div>
+  </section>
+
+  <section class="pc-contenu pc-derniers">
+    <div class="pc-derniers-entete">
+      <h2>Derniers écrits</h2>
+      <a href="/essais" class="pc-lien-tout">Tous les essais</a>
+    </div>
+
+    {recents.length === 0 ? (
+      <p class="pc-vide">
+        Le premier article arrive bientôt. Revenez cheminer avec nous.
+      </p>
+    ) : (
+      <ul class="pc-liste">
+        {recents.map((a) => (
+          <li class="pc-item">
+            <a href={`/essais/${a.id}/`} class="pc-item-lien">
+              <time class="pc-meta" datetime={a.data.date.toISOString()}>
+                {formaterDate(a.data.date)}
+              </time>
+              <h3 class="pc-item-titre">{a.data.titre}</h3>
+              <p class="pc-item-desc">{a.data.description}</p>
+            </a>
+          </li>
+        ))}
+      </ul>
+    )}
+  </section>
+</Base>
+
+<style>
+  .pc-hero { padding-top: 1rem; padding-bottom: 2rem; }
+  .pc-hero-texte { text-align: center; margin-top: -1rem; }
+  .pc-hero-texte h1 { margin-bottom: 0.3rem; }
+  .pc-accroche {
+    font-family: var(--pc-corps);
+    font-size: 1.25rem;
+    font-style: italic;
+    color: var(--pc-encre-douce);
+    margin: 0;
+  }
+  .pc-derniers { margin-top: 3.5rem; }
+  .pc-derniers-entete {
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: 1rem; border-bottom: 1px solid var(--pc-trait);
+    padding-bottom: 0.8rem; margin-bottom: 0.5rem;
+  }
+  .pc-derniers-entete h2 { margin: 0; font-size: 1.4rem; }
+  .pc-lien-tout {
+    border: none; font-family: var(--pc-util);
+    font-size: 0.9rem; font-weight: 500; color: var(--pc-accent);
+  }
+  .pc-liste { list-style: none; margin: 0; padding: 0; }
+  .pc-item { border-bottom: 1px solid var(--pc-trait); }
+  .pc-item-lien {
+    display: block; border: none; padding: 1.8rem 0;
+    transition: background 0.2s ease;
+  }
+  .pc-item-lien:hover {
+    background: linear-gradient(to right, transparent, var(--pc-fond-doux) 8%, var(--pc-fond-doux) 92%, transparent);
+  }
+  .pc-item-titre {
+    font-size: 1.5rem; margin: 0.4rem 0 0.4rem;
+    color: var(--pc-encre); transition: color 0.2s ease;
+  }
+  .pc-item-lien:hover .pc-item-titre { color: var(--pc-accent); }
+  .pc-item-desc {
+    margin: 0; color: var(--pc-encre-douce);
+    font-size: 1.05rem; line-height: 1.6;
+  }
+  .pc-vide { padding: 2rem 0; color: var(--pc-gris); font-style: italic; }
+</style>

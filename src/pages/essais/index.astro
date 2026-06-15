@@ -1,0 +1,88 @@
+---
+import Base from '../../layouts/Base.astro';
+import { getCollection } from 'astro:content';
+import { formaterDate } from '../../utils/lecture';
+
+const articles = (await getCollection('essais', ({ data }) => !data.brouillon))
+  .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+
+// regroupement par année
+const parAnnee = new Map<number, typeof articles>();
+for (const a of articles) {
+  const an = a.data.date.getFullYear();
+  if (!parAnnee.has(an)) parAnnee.set(an, []);
+  parAnnee.get(an)!.push(a);
+}
+const annees = [...parAnnee.keys()].sort((a, b) => b - a);
+---
+
+<Base titre="Essais" description="Tous les essais publiés sur Point Critique.">
+  <div class="pc-contenu pc-page">
+    <header class="pc-page-entete">
+      <h1>Essais</h1>
+      <p class="pc-page-sous">L'ensemble des écrits, du plus récent au plus ancien.</p>
+    </header>
+
+    {articles.length === 0 ? (
+      <p class="pc-vide">Aucun article publié pour l'instant.</p>
+    ) : (
+      annees.map((an) => (
+        <section class="pc-annee">
+          <h2 class="pc-annee-titre">{an}</h2>
+          <ul class="pc-liste">
+            {parAnnee.get(an)!.map((a) => (
+              <li class="pc-item">
+                <a href={`/essais/${a.id}/`} class="pc-item-lien">
+                  <time class="pc-meta" datetime={a.data.date.toISOString()}>
+                    {formaterDate(a.data.date)}
+                  </time>
+                  <h3 class="pc-item-titre">{a.data.titre}</h3>
+                  <p class="pc-item-desc">{a.data.description}</p>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))
+    )}
+  </div>
+</Base>
+
+<style>
+  .pc-page { padding-top: 3rem; }
+  .pc-page-entete { margin-bottom: 2.5rem; }
+  .pc-page-entete h1 { margin-bottom: 0.3rem; }
+  .pc-page-sous {
+    color: var(--pc-encre-douce);
+    font-style: italic;
+    margin: 0;
+  }
+  .pc-annee { margin-bottom: 2.5rem; }
+  .pc-annee-titre {
+    font-size: 1rem;
+    color: var(--pc-gris);
+    font-weight: 500;
+    border-bottom: 1px solid var(--pc-trait);
+    padding-bottom: 0.5rem;
+    margin: 0 0 0.5rem;
+  }
+  .pc-liste { list-style: none; margin: 0; padding: 0; }
+  .pc-item { border-bottom: 1px solid var(--pc-trait); }
+  .pc-item-lien {
+    display: block; border: none; padding: 1.6rem 0;
+    transition: background 0.2s ease;
+  }
+  .pc-item-lien:hover {
+    background: linear-gradient(to right, transparent, var(--pc-fond-doux) 8%, var(--pc-fond-doux) 92%, transparent);
+  }
+  .pc-item-titre {
+    font-size: 1.4rem; margin: 0.4rem 0;
+    color: var(--pc-encre); transition: color 0.2s ease;
+  }
+  .pc-item-lien:hover .pc-item-titre { color: var(--pc-accent); }
+  .pc-item-desc {
+    margin: 0; color: var(--pc-encre-douce);
+    font-size: 1.02rem; line-height: 1.6;
+  }
+  .pc-vide { color: var(--pc-gris); font-style: italic; }
+</style>
