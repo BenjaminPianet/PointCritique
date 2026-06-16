@@ -1,7 +1,6 @@
 ---
 titre: "Soleil d'Héraclite"
 date: 2026-06-16
-exergue:
 brouillon: false
 ---
 

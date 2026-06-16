@@ -1,8 +1,7 @@
 ---
 titre: "Le péché de Cassandre"
 date: 2026-06-16
-exergue: 
-brouillon: false
+sbrouillon: false
 ---
 
 À l’agonie du monde, un héraut souverain,
