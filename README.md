@@ -121,8 +121,7 @@ Ensuite, chaque contenu ajouté et envoyé sur GitHub se publie tout seul.
 ## Nouveautés
 
 - **Pensées** (`/pensees`) : réflexions brèves, affichées en flux chronologique.
-  Ajouter un fichier Markdown dans `src/content/pensees/` (voir `_modele.md`),
-  avec `titre` (facultatif), `date` et `brouillon: false`.
+  Voir le guide « Publier une pensée » ci-dessous.
 - **Forum** (`/forum`) : discussions adossées aux Discussions GitHub via
   [giscus](https://giscus.app). Activation en 3 étapes décrites dans
   `src/config/forum.ts` (activer les Discussions, installer l'app giscus,
@@ -132,3 +131,42 @@ Ensuite, chaque contenu ajouté et envoyé sur GitHub se publie tout seul.
   en marge, à la manière des éditions critiques (masqué sur écrans étroits).
 - **Flux RSS** (`/rss.xml`), **sitemap** (`/sitemap-index.xml`),
   **robots.txt**, **page 404** et préchargement des liens au survol.
+
+## Publier une pensée
+
+Les pensées vivent dans `src/content/pensees/` : un fichier Markdown par
+pensée. Elles s'affichent en entier sur la page `/pensees`, de la plus
+récente à la plus ancienne, et sont reprises dans le flux RSS.
+
+1. **Créer le fichier.** Dupliquez `src/content/pensees/_modele.md` et
+   donnez-lui un nom parlant en minuscules, sans espaces ni accents,
+   par exemple `sur_le_hasard.md`. Le nom du fichier sert d'ancre dans
+   l'URL (`/pensees/#sur_le_hasard`) mais n'apparaît pas à l'écran.
+
+2. **Renseigner l'en-tête** (le bloc entre les deux `---`) :
+
+   ```markdown
+   ---
+   titre: "Sur le hasard"     # facultatif — omettez la ligne pour un fragment sans titre
+   date: 2026-07-02           # obligatoire, format AAAA-MM-JJ
+   brouillon: false           # false = publié ; true = invisible sur le site
+   ---
+   ```
+
+3. **Écrire le texte** sous l'en-tête, en Markdown ordinaire
+   (paragraphes, *italique*, **gras**, liens, citations avec `>`).
+   Une pensée peut faire une ligne comme une page — mais si elle
+   s'étire, c'est peut-être un essai qui s'ignore.
+
+4. **Vérifier en local** avec `npm run dev`, puis publier :
+
+   ```bash
+   git add src/content/pensees/sur_le_hasard.md
+   git commit -m "Pensée : sur le hasard"
+   git push
+   ```
+
+Astuce : gardez `brouillon: true` tant que le texte mûrit — le fichier
+peut vivre dans le dépôt sans jamais apparaître sur le site. Les fichiers
+dont le nom commence par `_` (comme `_modele.md`) sont de simples gabarits,
+laissés en brouillon.
