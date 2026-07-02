@@ -31,7 +31,7 @@ const lecture = tempsLecture(article.body ?? '');
       </div>
     </header>
 
-    <div class="pc-lecture pc-prose">
+    <div class="pc-lecture pc-prose" data-numerotation>
       <Content components={{ Video }} />
     </div>
 
@@ -88,4 +88,86 @@ const lecture = tempsLecture(article.body ?? '');
     width: 8px; height: 8px; border-radius: 50%;
     background: var(--pc-accent);
   }
+
+  /* Numérotation des lignes (éditions critiques) : chiffres en marge */
+  .pc-prose { position: relative; }
+  .pc-prose :global(.pc-num-ligne) {
+    position: absolute;
+    left: -0.8rem;
+    transform: translateX(-100%);
+    font-family: var(--pc-util);
+    font-size: 0.72rem;
+    font-weight: 500;
+    letter-spacing: 0.03em;
+    color: var(--pc-gris);
+    opacity: 0.75;
+    user-select: none;
+    pointer-events: none;
+  }
+  /* Sans marge disponible, on masque la numérotation */
+  @media (max-width: 860px) {
+    .pc-prose :global(.pc-num-ligne) { display: none; }
+  }
 </style>
+
+<script>
+  // Numérote la prose toutes les 5 lignes, comme dans une édition critique.
+  // Les lignes sont celles du rendu réel : la numérotation est recalculée
+  // au chargement des polices et au redimensionnement.
+  const PAS = 5;
+
+  function numeroter() {
+    const prose = document.querySelector<HTMLElement>('[data-numerotation]');
+    if (!prose) return;
+
+    prose.querySelectorAll('.pc-num-ligne').forEach((n) => n.remove());
+
+    const blocs = prose.querySelectorAll<HTMLElement>(
+      ':scope > p, :scope > blockquote > p, :scope > ul > li, :scope > ol > li'
+    );
+    const refProse = prose.getBoundingClientRect();
+    let compteur = 0;
+
+    for (const bloc of blocs) {
+      const style = getComputedStyle(bloc);
+      const hLigne = parseFloat(style.lineHeight);
+      if (!hLigne || Number.isNaN(hLigne)) continue;
+
+      const rect = bloc.getBoundingClientRect();
+      const hTexte =
+        rect.height -
+        parseFloat(style.paddingTop) -
+        parseFloat(style.paddingBottom);
+      const nbLignes = Math.max(1, Math.round(hTexte / hLigne));
+
+      for (let l = 1; l <= nbLignes; l++) {
+        compteur++;
+        if (compteur % PAS !== 0) continue;
+        const num = document.createElement('span');
+        num.className = 'pc-num-ligne';
+        num.textContent = String(compteur);
+        num.setAttribute('aria-hidden', 'true');
+        const y =
+          rect.top - refProse.top +
+          parseFloat(style.paddingTop) +
+          (l - 1) * hLigne;
+        num.style.top = `${y}px`;
+        prose.appendChild(num);
+      }
+    }
+  }
+
+  let attente: number;
+  function replanifier() {
+    clearTimeout(attente);
+    attente = window.setTimeout(numeroter, 150);
+  }
+
+  if (document.fonts?.ready) {
+    document.fonts.ready.then(numeroter);
+  } else {
+    numeroter();
+  }
+  window.addEventListener('resize', replanifier);
+  window.addEventListener('load', numeroter);
+</script>

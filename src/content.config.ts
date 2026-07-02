@@ -23,6 +23,16 @@ const poesie = defineCollection({
   }),
 });
 
+// PENSÉES — réflexions brèves, plus courtes que des essais
+const pensees = defineCollection({
+  loader: glob({ pattern: '**/*.{md,mdx}', base: './src/content/pensees' }),
+  schema: z.object({
+    titre: z.string().optional(),
+    date: z.coerce.date(),
+    brouillon: z.boolean().default(false),
+  }),
+});
+
 // RECHERCHE — travaux et publications (bibliographie)
 const recherche = defineCollection({
   loader: glob({ pattern: '**/*.md', base: './src/content/recherche' }),
@@ -50,4 +60,4 @@ const videos = defineCollection({
   }),
 });
 
-export const collections = { essais, poesie, recherche, videos };
+export const collections = { essais, pensees, poesie, recherche, videos };

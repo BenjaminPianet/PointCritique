@@ -1,0 +1,96 @@
+---
+import Base from '../../layouts/Base.astro';
+import { FORUM, forumConfigure } from '../../config/forum';
+
+const lienDiscussions = `https://github.com/${FORUM.repo}/discussions`;
+---
+
+<Base
+  titre="Forum"
+  description="L'espace de discussion de Point Critique : réagir aux essais, prolonger les idées, ouvrir de nouveaux fils."
+>
+  <div class="pc-lecture pc-page">
+    <header class="pc-page-entete">
+      <h1>Forum</h1>
+      <p class="pc-page-sous">
+        Réagir aux essais, prolonger une idée, ouvrir un fil — la discussion
+        est publique et chacun peut s'y joindre.
+      </p>
+    </header>
+
+    <p class="pc-forum-note">
+      Les échanges reposent sur les <a href={lienDiscussions}>Discussions
+      GitHub</a> du site : un compte GitHub (gratuit) suffit pour écrire, et
+      tout est lisible sans compte.
+    </p>
+
+    {forumConfigure ? (
+      <div class="pc-forum-cadre">
+        <script
+          is:inline
+          src="https://giscus.app/client.js"
+          data-repo={FORUM.repo}
+          data-repo-id={FORUM.repoId}
+          data-category={FORUM.category}
+          data-category-id={FORUM.categoryId}
+          data-mapping="pathname"
+          data-strict="0"
+          data-reactions-enabled="1"
+          data-emit-metadata="0"
+          data-input-position="top"
+          data-theme={FORUM.theme}
+          data-lang={FORUM.lang}
+          data-loading="lazy"
+          crossorigin="anonymous"
+          async
+        ></script>
+      </div>
+    ) : (
+      <div class="pc-forum-attente">
+        <p>
+          Le fil de discussion intégré sera bientôt disponible ici. En
+          attendant, la conversation est déjà ouverte :
+        </p>
+        <a class="pc-forum-bouton" href={lienDiscussions}>
+          Rejoindre les discussions →
+        </a>
+      </div>
+    )}
+  </div>
+</Base>
+
+<style>
+  .pc-page { padding-top: 3rem; }
+  .pc-page-entete { margin-bottom: 2rem; }
+  .pc-page-entete h1 { margin-bottom: 0.3rem; }
+  .pc-page-sous { color: var(--pc-encre-douce); font-style: italic; margin: 0; }
+
+  .pc-forum-note {
+    color: var(--pc-encre-douce);
+    font-size: 1.02rem;
+    margin-bottom: 2.5rem;
+  }
+  .pc-forum-cadre { min-height: 20rem; }
+
+  .pc-forum-attente {
+    border: 1px solid var(--pc-trait);
+    background: var(--pc-fond-doux);
+    border-radius: 6px;
+    padding: 2rem;
+    text-align: center;
+  }
+  .pc-forum-attente p { margin-bottom: 1.4rem; color: var(--pc-encre-douce); }
+  .pc-forum-bouton {
+    display: inline-block;
+    border: 1px solid var(--pc-accent);
+    border-radius: 4px;
+    padding: 0.6rem 1.2rem;
+    font-family: var(--pc-util);
+    font-weight: 500;
+    font-size: 0.95rem;
+  }
+  .pc-forum-bouton:hover {
+    background: var(--pc-accent);
+    color: var(--pc-fond);
+  }
+</style>

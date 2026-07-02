@@ -13,6 +13,7 @@ const {
 
 const titreComplet = titre === 'Point Critique' ? titre : `${titre} — Point Critique`;
 const chemin = Astro.url.pathname;
+const canonique = new URL(chemin, Astro.site);
 const estActif = (lien: string) =>
   lien === '/' ? chemin === '/' : chemin.startsWith(lien);
 ---
@@ -34,9 +35,24 @@ const estActif = (lien: string) =>
       rel="stylesheet"
     />
 
+    <link rel="canonical" href={canonique} />
+    <link
+      rel="alternate"
+      type="application/rss+xml"
+      title="Point Critique — flux RSS"
+      href={new URL('/rss.xml', Astro.site)}
+    />
+    <link rel="sitemap" href="/sitemap-index.xml" />
+
     <meta property="og:title" content={titreComplet} />
     <meta property="og:description" content={description} />
     <meta property="og:type" content="website" />
+    <meta property="og:url" content={canonique} />
+    <meta property="og:site_name" content="Point Critique" />
+    <meta property="og:locale" content="fr_FR" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content={titreComplet} />
+    <meta name="twitter:description" content={description} />
   </head>
   <body>
     <header class="pc-entete">
@@ -48,9 +64,11 @@ const estActif = (lien: string) =>
         <nav class="pc-nav" aria-label="Navigation principale">
           <a href="/" class:list={[{ actif: estActif('/') }]}>Accueil</a>
           <a href="/essais" class:list={[{ actif: estActif('/essais') }]}>Essais</a>
+          <a href="/pensees" class:list={[{ actif: estActif('/pensees') }]}>Pensées</a>
           <a href="/poesie" class:list={[{ actif: estActif('/poesie') }]}>Poésie</a>
           <a href="/recherche" class:list={[{ actif: estActif('/recherche') }]}>Recherche</a>
           <a href="/videos" class:list={[{ actif: estActif('/videos') }]}>Vidéos</a>
+          <a href="/forum" class:list={[{ actif: estActif('/forum') }]}>Forum</a>
           <a href="/a-propos" class:list={[{ actif: estActif('/a-propos') }]}>À propos</a>
         </nav>
       </div>
@@ -64,6 +82,11 @@ const estActif = (lien: string) =>
       <div class="pc-contenu pc-pied-grille">
         <span class="pc-meta">Point Critique</span>
         <span class="pc-meta pc-pied-note">Cheminons aux côtés des processus</span>
+        <nav class="pc-pied-nav" aria-label="Liens secondaires">
+          <a href="/rss.xml">RSS</a>
+          <a href="/forum">Forum</a>
+          <a href="/a-propos">À propos</a>
+        </nav>
       </div>
     </footer>
 
@@ -151,6 +174,15 @@ const estActif = (lien: string) =>
         flex-wrap: wrap;
       }
       .pc-pied-note { text-transform: none; letter-spacing: 0; font-style: normal; }
+      .pc-pied-nav {
+        display: flex;
+        gap: 1.2rem;
+        font-family: var(--pc-util);
+        font-size: 0.85rem;
+        font-weight: 500;
+      }
+      .pc-pied-nav a { border: none; color: var(--pc-gris); }
+      .pc-pied-nav a:hover { color: var(--pc-accent); }
 
       @media (max-width: 720px) {
         .pc-entete-grille { justify-content: center; }

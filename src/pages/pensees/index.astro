@@ -1,0 +1,104 @@
+---
+import Base from '../../layouts/Base.astro';
+import { getCollection, render } from 'astro:content';
+import { formaterDate } from '../../utils/lecture';
+
+// Les pensées sont courtes : on les affiche en entier, comme un carnet,
+// de la plus récente à la plus ancienne.
+const pensees = (await getCollection('pensees', ({ data }) => !data.brouillon))
+  .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+
+const rendues = await Promise.all(
+  pensees.map(async (p) => ({ p, Content: (await render(p)).Content }))
+);
+---
+
+<Base
+  titre="Pensées"
+  description="Réflexions brèves — des fragments plus courts que des essais, notés au fil des jours."
+>
+  <div class="pc-lecture pc-page">
+    <header class="pc-page-entete">
+      <h1>Pensées</h1>
+      <p class="pc-page-sous">
+        Des fragments, plus courts que des essais — notés au fil des jours.
+      </p>
+    </header>
+
+    {rendues.length === 0 ? (
+      <p class="pc-vide">Aucune pensée publiée pour l'instant.</p>
+    ) : (
+      <ol class="pc-flux" reversed>
+        {rendues.map(({ p, Content }) => (
+          <li class="pc-pensee" id={p.id}>
+            <div class="pc-pensee-marge">
+              <span class="pc-pensee-noeud" aria-hidden="true"></span>
+              <time class="pc-meta" datetime={p.data.date.toISOString()}>
+                {formaterDate(p.data.date)}
+              </time>
+            </div>
+            {p.data.titre && <h2 class="pc-pensee-titre">{p.data.titre}</h2>}
+            <div class="pc-pensee-corps">
+              <Content />
+            </div>
+          </li>
+        ))}
+      </ol>
+    )}
+  </div>
+</Base>
+
+<style>
+  .pc-page { padding-top: 3rem; }
+  .pc-page-entete { margin-bottom: 3rem; }
+  .pc-page-entete h1 { margin-bottom: 0.3rem; }
+  .pc-page-sous { color: var(--pc-encre-douce); font-style: italic; margin: 0; }
+  .pc-vide { color: var(--pc-gris); font-style: italic; }
+
+  /* Flux vertical : un fil relie les pensées, comme les nœuds du réseau */
+  .pc-flux {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    position: relative;
+  }
+  .pc-flux::before {
+    content: '';
+    position: absolute;
+    left: 3px;
+    top: 0.6rem;
+    bottom: 0.6rem;
+    width: 1px;
+    background: var(--pc-trait);
+  }
+  .pc-pensee {
+    position: relative;
+    padding: 0 0 3rem 1.8rem;
+  }
+  .pc-pensee:last-child { padding-bottom: 0.5rem; }
+  .pc-pensee-marge {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    margin-bottom: 0.6rem;
+  }
+  .pc-pensee-noeud {
+    position: absolute;
+    left: 0;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--pc-accent);
+  }
+  .pc-pensee-titre {
+    font-size: 1.25rem;
+    margin: 0 0 0.5rem;
+  }
+  .pc-pensee-corps :global(p) { margin-bottom: 1em; }
+  .pc-pensee-corps :global(p:last-child) { margin-bottom: 0; }
+  .pc-pensee-corps {
+    color: var(--pc-encre);
+    font-size: 1.08rem;
+    line-height: 1.7;
+  }
+</style>

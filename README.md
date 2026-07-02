@@ -117,3 +117,18 @@ description: "Phrase de présentation."   # facultatif
 3. Branche le domaine `pointcritique.com`.
 
 Ensuite, chaque contenu ajouté et envoyé sur GitHub se publie tout seul.
+
+## Nouveautés
+
+- **Pensées** (`/pensees`) : réflexions brèves, affichées en flux chronologique.
+  Ajouter un fichier Markdown dans `src/content/pensees/` (voir `_modele.md`),
+  avec `titre` (facultatif), `date` et `brouillon: false`.
+- **Forum** (`/forum`) : discussions adossées aux Discussions GitHub via
+  [giscus](https://giscus.app). Activation en 3 étapes décrites dans
+  `src/config/forum.ts` (activer les Discussions, installer l'app giscus,
+  recopier `repoId` et `categoryId`). Tant que la configuration n'est pas
+  remplie, la page affiche un lien direct vers les Discussions.
+- **Essais indexés** : la prose des essais est numérotée toutes les 5 lignes
+  en marge, à la manière des éditions critiques (masqué sur écrans étroits).
+- **Flux RSS** (`/rss.xml`), **sitemap** (`/sitemap-index.xml`),
+  **robots.txt**, **page 404** et préchargement des liens au survol.

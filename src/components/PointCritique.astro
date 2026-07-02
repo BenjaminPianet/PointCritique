@@ -1,10 +1,15 @@
 ---
-// PointCritique.astro — le geste signature, version morphing.
-// Un réseau de nœuds reliés par des fils. Le système se cristallise tour à
-// tour en fleur, abeille et cerf, s'effondre dans le chaos entre chaque forme,
-// puis recommence. Toujours agité par une force intérieure, retenu par une
-// gravité commune.
-// Rendu Canvas. Ralentit au scroll. Respecte prefers-reduced-motion.
+// PointCritique.astro — le geste signature, version organique.
+//
+// Un réseau vivant de nœuds et d'arêtes. Le système erre dans un chaos
+// habité — porté par un champ de flux, relié par des fils de proximité —
+// puis se cristallise, nœud après nœud, en une forme de vie : fleur,
+// abeille, cerf. La forme respire un instant, se dissout dans le courant,
+// et le cycle recommence.
+//
+// Ni ressort ni rebond : les mouvements sont amortis, continus, comme
+// portés par un fluide. Rendu Canvas. Ralentit au scroll. Respecte
+// prefers-reduced-motion (première forme dessinée, immobile).
 ---
 
 <div class="pc-systeme" aria-hidden="true">
@@ -28,13 +33,19 @@
 
 <script>
   type Noeud = {
+    // position d'errance (chaos) — portée par le champ de flux
+    ex: number; ey: number;
+    // position rendue
     x: number; y: number;
-    vx: number; vy: number;
-    tx: number; ty: number;     // cible courante (vers la forme)
-    phase: number; freq: number;
+    // cible dans la forme courante / suivante
+    fx: number; fy: number;
+    // décalage individuel d'assemblage (0..1) : la forme se construit
+    // nœud après nœud, comme une croissance
+    delai: number;
+    // caractère propre : rayon, phase et fréquence de respiration
+    rayon: number; phase: number; freq: number;
   };
 
-  // Contours des trois formes (coordonnées normalisées -0.5..0.5).
   const FORMES: Record<string, [number, number][]> = {
     fleur: [[-0.046,-0],[0.482,-0],[0.429,0.081],[0.283,0.116],[0.089,0.075],[0.006,0.042],[0.137,0.208],[0.183,0.373],[0.148,0.483],[0.062,0.5],[-0.029,0.411],[-0.076,0.236],[-0.053,0.021],[-0.135,0.176],[-0.273,0.307],[-0.406,0.345],[-0.482,0.295],[-0.467,0.19],[-0.35,0.079],[-0.157,0.009],[-0.157,-0.009],[-0.35,-0.079],[-0.467,-0.19],[-0.482,-0.295],[-0.406,-0.345],[-0.273,-0.307],[-0.135,-0.176],[-0.053,-0.021],[-0.076,-0.236],[-0.029,-0.411],[0.062,-0.5],[0.148,-0.483],[0.183,-0.373],[0.137,-0.208],[0.006,-0.042],[0.089,-0.075],[0.283,-0.116],[0.429,-0.081]],
     abeille: [[0.255,0.249],[0.232,0.336],[0.167,0.413],[0.067,0.47],[-0.055,0.5],[-0.185,0.5],[-0.307,0.47],[-0.407,0.413],[-0.472,0.336],[-0.494,0.249],[-0.472,0.162],[-0.407,0.085],[-0.307,0.029],[-0.185,-0.002],[-0.055,-0.002],[0.067,0.029],[0.167,0.085],[0.232,0.162],[0.067,0.249],[-0.026,0.359],[-0.214,0.359],[-0.307,0.249],[-0.214,0.139],[-0.026,0.139],[0.345,0.249],[0.405,0.309],[0.405,0.189],[0.494,0.399],[0.494,0.099],[-0.157,-0.275],[-0.082,-0.388],[-0.007,-0.5],[-0.157,-0.275],[-0.082,-0.388],[-0.007,-0.5],[-0.12,0.249],[-0.12,0.249],[-0.12,0.249]],
@@ -42,6 +53,21 @@
   };
   const ORDRE = ['fleur', 'abeille', 'cerf'];
   const N = FORMES.fleur.length;
+
+  // ---- courbes d'adoucissement (aucun rebond) ----
+  const lisse = (t: number) => t * t * (3 - 2 * t);            // smoothstep
+  const lisse2 = (t: number) => lisse(lisse(t));                // plus doux
+  const borne = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
+
+  // ---- champ de flux : un fluide lent, incompressible en apparence ----
+  // Somme de sinusoïdes déphasées : peu coûteux, sans grille, organique.
+  function fluxAngle(x: number, y: number, t: number): number {
+    return (
+      Math.sin(x * 0.0021 + t * 0.21) * 1.7 +
+      Math.cos(y * 0.0028 - t * 0.16) * 1.4 +
+      Math.sin((x + y) * 0.0012 + t * 0.09) * 2.1
+    );
+  }
 
   function init() {
     const wrap = document.querySelector<HTMLElement>('.pc-systeme');
@@ -57,7 +83,7 @@
     let largeur = 0, hauteur = 0, cx = 0, cy = 0, echelle = 1;
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     const noeuds: Noeud[] = [];
-    let liens: [number, number][] = [];
+    let liensForme: [number, number][] = [];
 
     function dimensionner() {
       largeur = wrap.clientWidth;
@@ -73,128 +99,210 @@
     function creerNoeuds() {
       noeuds.length = 0;
       for (let i = 0; i < N; i++) {
+        const a = Math.random() * Math.PI * 2;
+        const r = Math.random() * Math.min(largeur, hauteur) * 0.35;
         noeuds.push({
-          x: cx + (Math.random() - 0.5) * largeur * 0.5,
-          y: cy + (Math.random() - 0.5) * hauteur * 0.5,
-          vx: 0, vy: 0, tx: cx, ty: cy,
+          ex: cx + Math.cos(a) * r,
+          ey: cy + Math.sin(a) * r,
+          x: 0, y: 0, fx: cx, fy: cy,
+          delai: 0,
+          rayon: 1.5 + Math.random() * 1.2,
           phase: Math.random() * Math.PI * 2,
-          freq: 0.4 + Math.random() * 0.6,
+          freq: 0.25 + Math.random() * 0.45,
         });
       }
     }
 
-    // calcule les liens : chaque nœud relié à ses 2 plus proches voisins
-    function calculerLiens() {
-      liens = [];
+    // liens de la forme : chaque nœud relié à ses 2 plus proches voisins
+    function calculerLiensForme() {
+      liensForme = [];
       for (let i = 0; i < N; i++) {
         const d = noeuds
-          .map((n, j) => ({ j, d: Math.hypot(n.tx - noeuds[i].tx, n.ty - noeuds[i].ty) }))
+          .map((n, j) => ({ j, d: Math.hypot(n.fx - noeuds[i].fx, n.fy - noeuds[i].fy) }))
           .filter((o) => o.j !== i)
           .sort((a, b) => a.d - b.d);
         for (let k = 0; k < 2; k++) {
           const j = d[k].j;
-          if (!liens.some(([a, b]) => (a === i && b === j) || (a === j && b === i))) {
-            liens.push([i, j]);
+          if (!liensForme.some(([a, b]) => (a === i && b === j) || (a === j && b === i))) {
+            liensForme.push([i, j]);
           }
         }
       }
     }
 
-    // applique une forme : fixe les cibles des nœuds + recalcule les liens
+    // applique une forme : cibles + délais d'assemblage (croissance depuis
+    // le nœud le plus proche du centre de la forme, en vague)
     function appliquerForme(nom: string) {
       const f = FORMES[nom];
       for (let i = 0; i < N; i++) {
-        n_tx(i, cx + f[i][0] * echelle, cy + f[i][1] * echelle);
+        noeuds[i].fx = cx + f[i][0] * echelle;
+        noeuds[i].fy = cy + f[i][1] * echelle;
       }
-      calculerLiens();
-    }
-    function n_tx(i: number, x: number, y: number) { noeuds[i].tx = x; noeuds[i].ty = y; }
-
-    // état des cibles vers le chaos (effondrement)
-    function disperser() {
+      let dMax = 1;
       for (const n of noeuds) {
-        n.tx = cx + (Math.random() - 0.5) * largeur * 0.7;
-        n.ty = cy + (Math.random() - 0.5) * hauteur * 0.7;
+        dMax = Math.max(dMax, Math.hypot(n.fx - cx, n.fy - cy));
       }
-      liens = []; // pas de fils pendant l'effondrement (sauf voisins proches dynamiques)
+      for (const n of noeuds) {
+        const prop = Math.hypot(n.fx - cx, n.fy - cy) / dMax; // 0 centre → 1 bord
+        n.delai = prop * 0.75 + Math.random() * 0.25;          // vague + grain
+      }
+      calculerLiensForme();
     }
 
-    // machine à états : assemble -> tient -> disperse -> forme suivante
-    type Phase = 'forme' | 'chaos';
-    let phase: Phase = 'forme';
+    // ---- cycle : chaos → assemblage → forme tenue → dissolution ----
+    const T_CHAOS = 3.0;
+    const T_ASSEMBLAGE = 2.6;
+    const T_FORME = 4.6;
+    const T_DISSOLUTION = 2.2;
+    const T_CYCLE = T_CHAOS + T_ASSEMBLAGE + T_FORME + T_DISSOLUTION;
+
     let idxForme = 0;
-    let minuteur = 0;
-    const DUREE_FORME = 4.2;   // secondes où la forme est tenue
-    const DUREE_CHAOS = 1.6;   // secondes d'effondrement
+    let horloge = T_CHAOS * 0.5; // on démarre déjà en route vers la 1re forme
+    let t = 0, visible = 1, raf = 0, precedent = 0;
 
-    let t = 0, visible = 1, raf = 0;
+    // présence de la forme pour un nœud donné (0 = chaos pur, 1 = en place)
+    function presence(n: Noeud): number {
+      if (horloge < T_CHAOS) return 0;
+      if (horloge < T_CHAOS + T_ASSEMBLAGE) {
+        const p = (horloge - T_CHAOS) / T_ASSEMBLAGE;        // 0..1 global
+        const local = borne((p - n.delai * 0.55) / 0.45, 0, 1);
+        return lisse2(local);
+      }
+      if (horloge < T_CHAOS + T_ASSEMBLAGE + T_FORME) return 1;
+      const p = (horloge - T_CHAOS - T_ASSEMBLAGE - T_FORME) / T_DISSOLUTION;
+      const local = borne((p - (1 - n.delai) * 0.5) / 0.5, 0, 1);
+      return 1 - lisse2(local);
+    }
 
-    function pas() {
-      t += 0.016;
-      minuteur += 0.016;
+    function pas(maintenant: number) {
+      const dt = precedent ? Math.min((maintenant - precedent) / 1000, 0.05) : 0.016;
+      precedent = maintenant;
+      const vit = visible;
+      t += dt * vit;
+      horloge += dt * vit;
 
-      // transitions
-      if (phase === 'forme' && minuteur > DUREE_FORME) {
-        phase = 'chaos'; minuteur = 0; disperser();
-      } else if (phase === 'chaos' && minuteur > DUREE_CHAOS) {
-        phase = 'forme'; minuteur = 0;
+      if (horloge >= T_CYCLE) {
+        horloge -= T_CYCLE;
         idxForme = (idxForme + 1) % ORDRE.length;
         appliquerForme(ORDRE[idxForme]);
       }
 
-      const vit = reduit ? 0 : visible;
       ctx.clearRect(0, 0, largeur, hauteur);
 
+      // -- errance : le chaos suit le champ de flux, doucement rappelé
+      //    vers la scène pour ne jamais la quitter
+      const rappel = 0.12;
       for (const n of noeuds) {
-        if (vit > 0) {
-          // agitation propre (force intérieure)
-          const ax = Math.cos(t * n.freq + n.phase) * 0.06 * vit;
-          const ay = Math.sin(t * n.freq * 1.3 + n.phase) * 0.06 * vit;
-          // attraction vers la cible (assemblage de la forme)
-          const k = phase === 'forme' ? 0.045 : 0.02;
-          const rx = (n.tx - n.x) * k;
-          const ry = (n.ty - n.y) * k;
-          n.vx += ax + rx;
-          n.vy += ay + ry;
-          n.vx *= 0.9; n.vy *= 0.9;
-          n.x += n.vx * vit;
-          n.y += n.vy * vit;
-        }
+        const a = fluxAngle(n.ex, n.ey, t) + n.phase * 0.3;
+        const v = 26 + 14 * Math.sin(t * n.freq + n.phase);
+        n.ex += (Math.cos(a) * v + (cx - n.ex) * rappel) * dt;
+        n.ey += (Math.sin(a) * v * 0.8 + (cy - n.ey) * rappel) * dt;
       }
 
-      // fils
-      if (phase === 'forme') {
-        for (const [i, j] of liens) {
-          const a = noeuds[i], b = noeuds[j];
+      // -- position rendue : mélange amorti entre errance et forme
+      //    (aucune vitesse accumulée : rien ne peut rebondir)
+      for (const n of noeuds) {
+        const p = presence(n);
+        // respiration de la forme : très léger battement radial
+        const souffle = 1 + Math.sin(t * 0.7 + n.phase) * 0.012 * p;
+        const fx = cx + (n.fx - cx) * souffle;
+        const fy = cy + (n.fy - cy) * souffle;
+        // frémissement résiduel même en place : la forme reste vivante
+        const fr = (1 - p * 0.85);
+        const cxb = n.ex + Math.sin(t * n.freq * 1.7 + n.phase) * 2 * fr;
+        const cyb = n.ey + Math.cos(t * n.freq * 1.3 + n.phase) * 2 * fr;
+        const tx = cxb + (fx - cxb) * p;
+        const ty = cyb + (fy - cyb) * p;
+        // suivi exponentiel : amorti critique, sans dépassement
+        const suivi = 1 - Math.exp(-dt * 5.5);
+        n.x += (tx - n.x) * suivi;
+        n.y += (ty - n.y) * suivi;
+      }
+
+      // -- arêtes de proximité (le réseau du chaos) : courbes, éphémères
+      const dMaxProx = Math.min(largeur, hauteur) * 0.28;
+      for (let i = 0; i < N; i++) {
+        const a = noeuds[i];
+        const pa = presence(a);
+        if (pa > 0.92) continue;
+        for (let j = i + 1; j < N; j++) {
+          const b = noeuds[j];
+          const pb = presence(b);
+          if (pb > 0.92) continue;
           const d = Math.hypot(a.x - b.x, a.y - b.y);
-          // proximité à la cible : les fils apparaissent quand la forme se forme
-          const da = Math.hypot(a.x - a.tx, a.y - a.ty);
-          const db = Math.hypot(b.x - b.tx, b.y - b.ty);
-          const nettete = Math.max(0, 1 - (da + db) / 120);
-          if (nettete <= 0.02) continue;
-          const tension = Math.min(d / 160, 1);
-          ctx.beginPath();
-          ctx.moveTo(a.x, a.y);
-          ctx.lineTo(b.x, b.y);
-          ctx.strokeStyle = cAccent;
-          ctx.globalAlpha = (0.1 + (1 - tension) * 0.3) * nettete;
-          ctx.lineWidth = 1;
-          ctx.stroke();
+          if (d > dMaxProx || d < 1) continue;
+          const alpha = (1 - d / dMaxProx) * 0.22 * (1 - Math.max(pa, pb));
+          if (alpha < 0.015) continue;
+          tracerArete(a, b, i + j, d, alpha);
         }
       }
-      ctx.globalAlpha = 1;
 
-      // nœuds
+      // -- arêtes de la forme : apparaissent quand leurs deux nœuds arrivent
+      for (const [i, j] of liensForme) {
+        const a = noeuds[i], b = noeuds[j];
+        const p = Math.min(presence(a), presence(b));
+        if (p < 0.05) continue;
+        const d = Math.hypot(a.x - b.x, a.y - b.y);
+        if (d < 1) continue;
+        const alpha = lisse(p) * (0.14 + (1 - Math.min(d / 160, 1)) * 0.3);
+        tracerArete(a, b, i * 31 + j, d, alpha);
+      }
+
+      // -- nœuds : rayon propre, halo discret, pouls très lent
       for (const n of noeuds) {
+        const p = presence(n);
+        const r = n.rayon * (0.85 + 0.3 * p) * (1 + Math.sin(t * n.freq + n.phase) * 0.08);
         ctx.beginPath();
-        ctx.arc(n.x, n.y, 2.1, 0, Math.PI * 2);
+        ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
         ctx.fillStyle = cAccent;
-        ctx.globalAlpha = phase === 'forme' ? 0.85 : 0.5;
+        ctx.globalAlpha = 0.4 + 0.5 * p;
         ctx.fill();
       }
       ctx.globalAlpha = 1;
 
       raf = requestAnimationFrame(pas);
+    }
+
+    // arête courbe : légère cambrure perpendiculaire, qui ondule lentement.
+    function tracerArete(a: Noeud, b: Noeud, graine: number, d: number, alpha: number) {
+      const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+      const nx = -(b.y - a.y) / d, ny = (b.x - a.x) / d;
+      const cambrure = Math.sin(t * 0.5 + graine * 1.7) * d * 0.09;
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.quadraticCurveTo(mx + nx * cambrure, my + ny * cambrure, b.x, b.y);
+      ctx.strokeStyle = cAccent;
+      ctx.globalAlpha = alpha;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+
+    // -- version immobile pour prefers-reduced-motion : la première forme,
+    //    dessinée une fois, sans animation
+    function dessinFixe() {
+      appliquerForme(ORDRE[0]);
+      ctx.clearRect(0, 0, largeur, hauteur);
+      for (const n of noeuds) { n.x = n.fx; n.y = n.fy; }
+      for (const [i, j] of liensForme) {
+        const a = noeuds[i], b = noeuds[j];
+        const d = Math.hypot(a.x - b.x, a.y - b.y);
+        if (d < 1) continue;
+        ctx.beginPath();
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(b.x, b.y);
+        ctx.strokeStyle = cAccent;
+        ctx.globalAlpha = 0.3;
+        ctx.stroke();
+      }
+      for (const n of noeuds) {
+        ctx.beginPath();
+        ctx.arc(n.x, n.y, n.rayon, 0, Math.PI * 2);
+        ctx.fillStyle = cAccent;
+        ctx.globalAlpha = 0.85;
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
     }
 
     function surScroll() {
@@ -207,21 +315,29 @@
     dimensionner();
     creerNoeuds();
     appliquerForme(ORDRE[0]);
-    surScroll();
-    pas();
+    for (const n of noeuds) { n.x = n.ex; n.y = n.ey; }
+
+    if (reduit) {
+      dessinFixe();
+    } else {
+      surScroll();
+      raf = requestAnimationFrame(pas);
+      window.addEventListener('scroll', surScroll, { passive: true });
+      document.addEventListener('visibilitychange', () => {
+        cancelAnimationFrame(raf);
+        precedent = 0;
+        if (!document.hidden) raf = requestAnimationFrame(pas);
+      });
+    }
 
     let redim: number;
     window.addEventListener('resize', () => {
       clearTimeout(redim);
       redim = window.setTimeout(() => {
         dimensionner();
-        if (phase === 'forme') appliquerForme(ORDRE[idxForme]);
+        appliquerForme(ORDRE[idxForme]);
+        if (reduit) dessinFixe();
       }, 200);
-    });
-    window.addEventListener('scroll', surScroll, { passive: true });
-    document.addEventListener('visibilitychange', () => {
-      cancelAnimationFrame(raf);
-      if (!document.hidden) pas();
     });
   }
 

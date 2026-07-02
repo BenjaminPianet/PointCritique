@@ -1,0 +1,20 @@
+---
+import Base from '../layouts/Base.astro';
+---
+
+<Base titre="Page introuvable" description="Cette page n'existe pas ou n'existe plus.">
+  <div class="pc-lecture pc-page pc-404">
+    <p class="pc-meta">Erreur 404</p>
+    <h1>Un point sans coordonnées</h1>
+    <p>
+      Cette page n'existe pas — ou le réseau s'est réorganisé sans elle.
+      Le chemin le plus sûr repasse par l'accueil.
+    </p>
+    <p><a href="/">← Retour à l'accueil</a></p>
+  </div>
+</Base>
+
+<style>
+  .pc-page { padding-top: 4rem; }
+  .pc-404 h1 { margin-top: 0.6rem; }
+</style>
