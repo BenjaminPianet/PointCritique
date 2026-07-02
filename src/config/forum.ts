@@ -14,9 +14,9 @@
 export const FORUM = {
   repo: 'BenjaminPianet/PointCritique',
   // À compléter depuis giscus.app :
-  repoId: '',
+  repoId: 'R_kgDOS7GcpA',
   category: 'Forum',
-  categoryId: '',
+  categoryId: 'DIC_kwDOS7GcpM4DAVOi',
   // Apparence
   lang: 'fr',
   theme: 'light',
